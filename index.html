@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>(주)오즈커뮤니케이션 - 택시광고 관리 v1.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Robust Excel Import/Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            color: #0f172a;
+        }
+
+        /* 남색 베이스 + 자주색 포인트 그라데이션 */
+        .oz-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 70%, #831843 100%);
+        }
+        
+        .oz-text-accent { color: #9d174d; }
+        .oz-bg-accent { background-color: #9d174d; }
+
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px -5px rgb(0 0 0 / 0.1);
+            overflow-x: auto;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 2090px;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            font-size: 13px;
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+        
+        th:hover {
+            background-color: #e2e8f0;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+            border-right: 2px solid #e2e8f0;
+            min-width: 190px;
+        }
+
+        th.sticky-col {
+            background: #f1f5f9;
+            z-index: 30;
+        }
+
+        td {
+            padding: 10px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 12px;
+            line-height: 1.4;
+            word-break: break-all;
+        }
+
+        tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { background-color: #fee2e2; }
+            50% { background-color: #fecaca; }
+        }
+        @keyframes pulse-purple {
+            0%, 100% { background-color: #f3e8ff; border-color: #d8b4fe; }
+            50% { background-color: #e9d5ff; border-color: #c084fc; }
+        }
+        .urgent-pulse { animation: pulse-red 2s infinite; }
+        .today-pulse { animation: pulse-purple 2s infinite; }
+
+        .history-table { table-layout: fixed; min-width: 100% !important; }
+        .history-row:nth-child(even) { background-color: #f8fafc; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 18px; height: 18px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 12px; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 12px; border: 4px solid #f1f5f9; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #64748b; }
+
+        input[type="checkbox"] { width: 1.2rem; height: 1.2rem; accent-color: #1e3a8a; cursor: pointer; }
+
+        /* 모바일 뷰어 전용 숨김 스크롤바 */
+        .mobile-view-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .mobile-view-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+
+        /* =========================================
+           모바일 최적화 (Mobile View Active) 전용 CSS
+           ========================================= */
+        
+        /* 기본적으로 데스크탑에서는 상세 패널과 모바일 요소들을 숨김 */
+        .mobile-detail-panel { display: none !important; }
+        .mobile-only-icon { display: none !important; }
+        .hide-on-desktop { display: none !important; }
+
+        /* 모바일 뷰가 활성화 되었을 때의 헤더 축소 */
+        .mobile-view-active #mainHeader { padding: 12px 16px; }
+        .mobile-view-active .hidden-mobile-element { display: none !important; }
+        .mobile-view-active .header-logo-wrap img { height: 1.5rem; } /* 로고 크기 축소 */
+        .mobile-view-active h1 { font-size: 1rem; line-height: 1.2; }
+        
+        /* 헤더 버튼 영역 재정렬 */
+        .mobile-view-active .header-btns { gap: 0.5rem; width: 100%; flex-direction: column; }
+        .mobile-view-active .cloud-sync-container { border: none; padding: 0; margin: 0; width: 100%; display: flex; flex-direction: row; justify-content: flex-end; }
+        .mobile-view-active .action-btns-container { width: 100%; display: flex; gap: 0.5rem; }
+        .mobile-view-active .action-btns-container button { flex: 1; padding: 0.5rem; font-size: 0.8rem; }
+        .mobile-view-active #cloudSyncBtn { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+        
+        /* 모바일 뷰 테이블 구조를 Card 형태로 변경 */
+        .mobile-view-active table, .mobile-view-active tbody, .mobile-view-active tr, .mobile-view-active td { display: block; width: 100%; }
+        .mobile-view-active thead { display: none; } /* 테이블 헤더 숨김 */
+        .mobile-view-active .hide-on-mobile-col { display: none !important; } /* 데스크탑 전용 컬럼 숨김 */
+        
+        .mobile-view-active .table-container { background: transparent; box-shadow: none; border-radius: 0; padding: 0 0.5rem; }
+        .mobile-view-active tr.main-row-item {
+            margin-bottom: 0.75rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .mobile-view-active tr:hover td { background-color: transparent; }
+        .mobile-view-active td.sticky-col { position: relative; border-right: none; min-width: 100%; }
+        .mobile-view-active td { border: none !important; padding: 0 !important; }
+
+        /* 모바일용 펼치기 토글 요소 표시 */
+        .mobile-view-active .mobile-only-icon { display: inline-block !important; transition: transform 0.3s ease; }
+        .mobile-view-active .hide-on-desktop { display: inline-flex !important; }
+        
+        /* 상세 패널 토글 */
+        .mobile-view-active .mobile-detail-panel { display: none; } /* 기본 숨김 */
+        .mobile-view-active .mobile-detail-panel.expanded { display: block !important; }
+
+    </style>
+</head>
+<body class="antialiased overflow-hidden bg-[#f8fafc] transition-colors duration-300" id="mainBody">
+
+<!-- 전체 앱 컨테이너 (모바일 토글 시 이 영역이 축소됨) -->
+<div id="appContainer" class="w-full min-h-screen bg-[#f8fafc] transition-all duration-300 relative mx-auto flex flex-col">
+
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-[999] flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-[90%] max-w-sm text-center transform transition-all border-t-8 border-blue-900 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-900 via-fuchsia-800 to-blue-900"></div>
+            <div class="bg-blue-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-lock text-3xl text-blue-900"></i>
+            </div>
+            <h2 class="text-2xl font-black mb-2 text-slate-800">시스템 로그인</h2>
+            <p class="text-xs text-slate-500 mb-8 font-bold">오즈커뮤니케이션 통합관리 시스템 <span class="text-blue-600">v1.1</span></p>
+            <input type="password" id="loginPwd" placeholder="비밀번호를 입력하세요" class="w-full p-4 border-2 border-slate-200 focus:border-blue-700 outline-none rounded-xl mb-6 text-center text-xl tracking-widest font-black transition-colors" onkeypress="if(event.key === 'Enter') login()">
+            <button onclick="login()" class="w-full py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-xl font-black transition-colors shadow-lg shadow-blue-900/30">접속하기</button>
+        </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div id="pwdChangeModal" class="fixed inset-0 bg-slate-900/80 z-[1000] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl border-t-4 border-fuchsia-800">
+            <div class="bg-fuchsia-50 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-key text-2xl text-fuchsia-800"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-800 mb-2">비밀번호 변경</h2>
+            <p class="text-xs text-slate-500 mb-6 font-bold">새로운 비밀번호를 설정하세요.</p>
+            
+            <input type="password" id="currentPwd" placeholder="현재 비밀번호" class="w-full p-4 mb-3 border-2 border-slate-200 focus:border-fuchsia-700 outline-none rounded-xl text-center font-bold tracking-widest text-lg">
+            <input type="password" id="newPwd" placeholder="새 비밀번호 (4자리 이상)" class="w-full p-4 mb-3 border-2 border-slate-200 focus:border-fuchsia-700 outline-none rounded-xl text-center font-bold tracking-widest text-lg">
+            <input type="password" id="newPwdConfirm" placeholder="새 비밀번호 확인" class="w-full p-4 mb-6 border-2 border-slate-200 focus:border-fuchsia-700 outline-none rounded-xl text-center font-bold tracking-widest text-lg">
+            
+            <div class="flex gap-3">
+                <button onclick="closePwdChangeModal()" class="flex-1 py-4 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</button>
+                <button onclick="changePassword()" class="flex-1 py-4 bg-fuchsia-800 text-white rounded-xl font-bold hover:bg-fuchsia-900 transition-colors shadow-lg">변경하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Version Info Modal -->
+    <div id="versionModal" class="fixed inset-0 bg-slate-900/80 z-[1000] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border-t-4 border-blue-600">
+            <div class="p-6 bg-slate-50 border-b flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-rocket text-blue-600"></i> 시스템 업데이트 내역
+                    </h2>
+                </div>
+                <button onclick="closeVersionModal()" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors">&times;</button>
+            </div>
+            <div class="p-8 max-h-[60vh] overflow-y-auto custom-scroll">
+                <div class="mb-8 relative pl-6 border-l-2 border-blue-600">
+                    <div class="absolute w-4 h-4 bg-blue-600 rounded-full -left-[9px] top-1 border-4 border-white shadow-sm"></div>
+                    <h3 class="font-black text-lg text-blue-800 flex items-center">v1.1 Update <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-md ml-2 uppercase font-black">Current</span></h3>
+                    <p class="text-xs text-slate-400 font-bold mb-3 mt-1">2026. 02. 23 적용</p>
+                    <ul class="text-[13px] text-slate-600 font-bold space-y-2 list-disc list-inside bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <li><span class="text-blue-700">모바일 UI 최적화:</span> S25 모바일 뷰 전환 시 불필요한 정보 최소화 및 카드뷰 레이아웃 도입</li>
+                        <li><span class="text-blue-700">확장형 상세 패널:</span> 모바일 환경에서 각 기사님 목록 클릭 시 상세 정보(계약/계좌/최근입금 등) 조회 기능</li>
+                        <li><span class="text-blue-700">클라우드 동기화 개선:</span> 환경 인식을 통한 견고한 오류 방지 및 실시간 저장 기능</li>
+                        <li><span class="text-blue-700">실시간 저장시간:</span> 대한민국 서울(KST) 기준 초단위 저장 시간 표기</li>
+                        <li><span class="text-blue-700">보안 강화:</span> 누락되었던 비밀번호 변경 및 재로그인 모달 완벽 복구</li>
+                    </ul>
+                </div>
+                
+                <div class="relative pl-6 border-l-2 border-slate-200">
+                    <div class="absolute w-3 h-3 bg-slate-300 rounded-full -left-[7px] top-1"></div>
+                    <h3 class="font-black text-lg text-slate-500">v1.0 Launch</h3>
+                    <ul class="mt-3 text-[13px] text-slate-400 font-bold space-y-2 list-disc list-inside">
+                        <li>오즈커뮤니케이션 택시광고 관리 시스템 최초 런칭</li>
+                        <li>엑셀 일괄 추가 및 추출 지원</li>
+                        <li>스마트 다중 검색 및 날짜 범위 필터 기능 탑재</li>
+                        <li>자동 목표 롤오버 기능 및 입금 히스토리 추적</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Message Box -->
+    <div id="msgBoxOverlay" class="fixed inset-0 bg-slate-900/60 z-[1000] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all text-center border-t-4 border-blue-800">
+            <p id="msgBoxText" class="text-slate-800 font-bold mb-6 text-base mt-2 whitespace-pre-line"></p>
+            <div class="flex gap-3 justify-center">
+                <button id="msgBoxCancel" class="hidden flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors">취소</button>
+                <button id="msgBoxConfirm" class="flex-1 py-3 bg-blue-800 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Option Modal -->
+    <div id="exportModal" class="fixed inset-0 bg-slate-900/80 z-[1000] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all text-center border-t-4 border-blue-800">
+            <div class="bg-blue-50 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-file-excel text-2xl text-blue-700"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 mb-2">데이터 추출 옵션</h3>
+            <p class="text-xs text-slate-500 font-bold mb-6">어떤 데이터를 추출하시겠습니까?</p>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="executeExport(true)" class="w-full py-4 bg-blue-700 hover:bg-blue-600 text-white rounded-xl font-bold transition-colors shadow-lg flex justify-center items-center gap-2">
+                    <i class="fas fa-filter"></i> 현재 검색된 항목만 추출
+                </button>
+                <button onclick="executeExport(false)" class="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors shadow-lg flex justify-center items-center gap-2">
+                    <i class="fas fa-database"></i> 전체 데이터 추출
+                </button>
+                <button onclick="closeExportModal()" class="w-full py-3 mt-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="oz-gradient text-white p-4 sticky top-0 z-[100] shadow-2xl border-b border-fuchsia-900/30 transition-all duration-300" id="mainHeader">
+        <div class="container mx-auto flex flex-col xl:flex-row justify-between items-center gap-4 transition-all duration-300">
+            
+            <div class="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto header-left-section">
+                <div class="flex items-center space-x-3 w-full justify-between md:justify-start">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-white p-2 rounded-xl shadow-inner header-logo-wrap transition-all">
+                            <img src="http://www.oz-ad.com/img/logo.png" alt="오즈 로고" class="h-8 md:h-9" onerror="this.src='https://via.placeholder.com/120x40?text=OZ+AD'">
+                        </div>
+                        <div class="flex flex-col header-title-wrap">
+                            <h1 class="text-xl font-black tracking-tight flex items-center gap-2">
+                                택시광고 관리
+                                <span class="bg-fuchsia-800 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">v1.1</span>
+                            </h1>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[10px] text-blue-200 font-bold uppercase tracking-tighter cursor-pointer hover:text-white transition-colors border-b border-dashed border-blue-400/50" onclick="openVersionModal()">업데이트 내역</p>
+                                <div class="w-px h-2.5 bg-white/30 hidden-mobile-element"></div>
+                                <span class="hidden-mobile-element flex items-center text-[9px] text-fuchsia-200 font-bold opacity-90 tracking-tighter">
+                                    Powered by <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" alt="Gemini" class="h-2.5 ml-1">
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Contact & Link Info -->
+                <div class="hidden-mobile-element flex flex-col md:flex-row items-center gap-2 md:ml-4 text-xs font-bold text-blue-100 bg-black/20 px-4 py-2 rounded-xl border border-white/10">
+                    <div class="flex items-center gap-2"><i class="fas fa-user-circle text-blue-300"></i> 담당자: 김태윤 (010-4947-6895)</div>
+                    <div class="hidden md:block w-px h-3 bg-white/20"></div>
+                    <a href="https://www.ktsmartmsg.com/index.jsp" target="_blank" class="flex items-center gap-1 hover:text-white transition-colors bg-white/10 px-2 py-1 rounded-md">
+                        <i class="fas fa-envelope text-fuchsia-300"></i> 단체문자 사이트
+                    </a>
+                </div>
+            </div>
+            
+            <div class="header-btns flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end transition-all duration-300">
+                <!-- Sync Area -->
+                <div class="flex flex-col items-center mr-0 md:mr-2 lg:mr-4 border-r-0 md:border-r border-white/10 pr-0 md:pr-4 w-full md:w-auto mb-2 md:mb-0 cloud-sync-container">
+                    <button id="cloudSyncBtn" onclick="saveToCloud()" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm font-black transition-all shadow-lg text-white border border-indigo-400 flex items-center justify-center">
+                        <i id="saveBtnIcon" class="fas fa-cloud-upload-alt mr-2"></i> 클라우드 동기화
+                    </button>
+                    <div class="hidden-mobile-element text-[10px] text-indigo-200 mt-1.5 font-bold tracking-tight">최근저장: <span id="lastSyncTime" class="font-mono text-white tracking-widest bg-black/30 px-1 py-0.5 rounded">동기화 대기중</span></div>
+                </div>
+
+                <div class="flex w-full md:w-auto gap-2 action-btns-container">
+                    <button id="mobileToggleBtn" onclick="toggleMobileView()" class="bg-purple-700 hover:bg-purple-600 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg text-white border border-purple-500/30 flex-1 md:flex-none flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-mobile-alt mr-1"></i> S25 모바일 뷰
+                    </button>
+                    
+                    <button onclick="openModal('add')" class="bg-blue-700 hover:bg-blue-600 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg flex-1 md:flex-none border border-blue-500/30 flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-plus mr-1"></i> 신규 등록
+                    </button>
+                </div>
+
+                <div class="hidden-mobile-element flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                    <button onclick="openPwdChangeModal()" class="bg-black/30 hover:bg-black/50 px-3 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg text-blue-100 border border-white/10 flex items-center justify-center" title="비밀번호 변경">
+                        <i class="fas fa-key"></i>
+                    </button>
+                    <div class="w-px h-6 bg-white/20 mx-1 hidden md:block self-center"></div>
+                    <button onclick="showExcelImportModal()" class="bg-emerald-700 hover:bg-emerald-600 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg flex-1 md:flex-none border border-emerald-500/30 flex items-center justify-center">
+                        <i class="fas fa-file-import mr-1"></i> 일괄추가
+                    </button>
+                    <button onclick="openExportModal()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg flex-1 md:flex-none border border-slate-500/30 flex items-center justify-center">
+                        <i class="fas fa-download mr-1"></i> 데이터 추출
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 p-4 md:p-8 relative w-full h-full pb-24" id="mainContentArea">
+        
+        <!-- Advertiser Stats Dashboard -->
+        <section class="mb-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hidden-mobile-element">
+            <h2 class="text-sm font-black text-slate-700 mb-3 flex items-center">
+                <i class="fas fa-chart-pie mr-2 text-blue-600"></i> 광고주별 진행 현황
+                <span class="text-xs font-bold text-slate-400 ml-2 font-normal">(광고주명 클릭 시 필터링 / 총 대수 숫자 클릭 시 목표 수정)</span>
+            </h2>
+            <div id="statsContainer" class="flex overflow-x-auto gap-4 custom-scroll pb-2">
+                <!-- Stats generated by JS -->
+            </div>
+        </section>
+
+        <!-- Search & Filter -->
+        <section class="mb-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col md:flex-row gap-2 md:gap-4 items-start md:items-center">
+                    <div class="relative flex-1 w-full">
+                        <input type="text" id="searchInput" placeholder="검색어 입력 (띄어쓰기 또는 쉼표 다중 검색)" 
+                               class="w-full pl-10 md:pl-12 pr-12 md:pr-14 py-3 md:py-4 rounded-xl md:rounded-2xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-700 transition-all text-sm md:text-base shadow-sm font-bold text-slate-700"
+                               onkeyup="if(event.key === 'Enter') { saveRecentSearch(); renderDrivers(); }">
+                        <i class="fas fa-search absolute left-4 top-4 md:top-5 text-slate-400"></i>
+                        <button onclick="startVoiceSearch()" id="voiceBtn" class="absolute right-2 md:right-4 top-2 md:top-3.5 p-2 text-slate-400 hover:text-blue-700 transition-colors rounded-full hover:bg-slate-100">
+                            <i class="fas fa-microphone text-base md:text-lg"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto hidden-mobile-element">
+                        <button onclick="toggleFilter()" class="flex-1 md:flex-none px-4 md:px-6 py-3 md:py-4 bg-slate-100 text-slate-600 rounded-xl md:rounded-2xl font-bold hover:bg-slate-200 transition whitespace-nowrap border border-slate-200 text-sm md:text-base">
+                            <i class="fas fa-filter mr-1 md:mr-2"></i> 상세필터
+                        </button>
+                        <button onclick="saveRecentSearch(); renderDrivers();" class="flex-[2] md:flex-none px-6 md:px-8 py-3 md:py-4 bg-blue-900 text-white rounded-xl md:rounded-2xl font-black hover:bg-blue-800 transition whitespace-nowrap shadow-md shadow-blue-900/20 text-sm md:text-base">
+                            검색
+                        </button>
+                        <button onclick="resetFilters()" class="flex-1 md:flex-none px-4 md:px-6 py-3 md:py-4 bg-slate-100 text-slate-600 rounded-xl md:rounded-2xl font-bold hover:bg-slate-200 transition whitespace-nowrap border border-slate-200 text-sm md:text-base">
+                            초기화
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search Guide & Recent Searches -->
+                <div class="px-2 flex flex-col gap-2 hidden-mobile-element">
+                    <p class="text-[11px] text-slate-500 font-bold leading-relaxed">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-1"></i> 검색 팁:
+                        <span class="text-slate-600 ml-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 cursor-help" title="입금일이 오늘인 기사님">오늘입금</span>
+                        <span class="text-slate-600 ml-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 cursor-help" title="입금이 7일 이내 남은 기사님">입금임박</span>
+                        <span class="text-slate-600 ml-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 cursor-help" title="계약종료 40일 이내 남은 기사님">종료임박</span>
+                        <span class="text-slate-600 ml-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">종료</span>
+                        <span class="text-slate-600 ml-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">미환급</span>
+                        등을 조합해 보세요. (예: <code>더큰병원 입금임박</code>)
+                    </p>
+                    <div id="recentSearchesArea" class="flex flex-wrap items-center gap-2 mt-1 hidden">
+                        <span class="text-[11px] font-black text-slate-400"><i class="fas fa-history mr-1"></i>최근 검색:</span>
+                        <div id="recentTags" class="flex flex-wrap gap-1.5"></div>
+                        <button onclick="clearRecentSearches()" class="text-[10px] text-slate-400 hover:text-red-500 underline ml-2">기록 삭제</button>
+                    </div>
+                </div>
+
+                <!-- Detailed Filter Area -->
+                <div id="detailFilter" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4 pt-4 border-t border-slate-100 mt-2 hidden-mobile-element">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <label class="text-[11px] font-black text-slate-500 mb-2 block uppercase tracking-wide">계약기간(시작/종료) 범위</label>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="filterContractStart" class="flex-1 p-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-700">
+                            <span class="text-slate-400 font-bold">~</span>
+                            <input type="date" id="filterContractEnd" class="flex-1 p-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-700">
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <label class="text-[11px] font-black text-slate-500 mb-2 block uppercase tracking-wide">최근 입금일 범위</label>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="filterLastStart" class="flex-1 p-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-700">
+                            <span class="text-slate-400 font-bold">~</span>
+                            <input type="date" id="filterLastEnd" class="flex-1 p-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-700">
+                        </div>
+                    </div>
+                    <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <label class="text-[11px] font-black text-blue-800 mb-2 block uppercase tracking-wide">차기 입금예정일 범위</label>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="filterNextStart" class="flex-1 p-2 rounded-lg border border-blue-200 text-sm outline-none focus:border-blue-700 bg-white">
+                            <span class="text-blue-400 font-bold">~</span>
+                            <input type="date" id="filterNextEnd" class="flex-1 p-2 rounded-lg border border-blue-200 text-sm outline-none focus:border-blue-700 bg-white">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Table -->
+        <div class="table-container custom-scroll transition-all duration-300" id="mainTableContainer">
+            <table id="mainTable">
+                <thead>
+                    <tr>
+                        <th class="sticky-col !p-0" onclick="handleSort('name')" title="클릭하여 정렬">
+                            <div class="flex items-center h-full px-4 py-3 bg-[#f1f5f9] hover:bg-[#e2e8f0]">
+                                <input type="checkbox" id="selectAll" onclick="toggleAll(this); event.stopPropagation();" title="전체 선택">
+                                <span class="ml-3 font-bold text-slate-700">이름/차량번호</span>
+                                <span id="sortWrap-name" class="sort-icon-wrap ml-auto flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span>
+                            </div>
+                        </th>
+                        <th style="width: 80px;" onclick="handleSort('adStatus')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">상태/등급 <span id="sortWrap-adStatus" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 120px;" onclick="handleSort('advertiser')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">광고주 <span id="sortWrap-advertiser" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 160px;" onclick="handleSort('contractStart')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">계약기간 <span id="sortWrap-contractStart" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 110px;" onclick="handleSort('carType')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">차종/소속 <span id="sortWrap-carType" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 130px;" onclick="handleSort('phone')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">연락처/주민번호 <span id="sortWrap-phone" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 140px;" onclick="handleSort('account')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">계좌번호 <span id="sortWrap-account" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 130px;" onclick="handleSort('firstPayAmt')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">최초 입금 <span id="sortWrap-firstPayAmt" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 100px;" onclick="handleSort('basePayDate')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">기준 입금일 <span id="sortWrap-basePayDate" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 130px;" onclick="handleSort('lastPayAmt')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">최근 입금 <span id="sortWrap-lastPayAmt" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 150px; color: #1e3a8a;" onclick="handleSort('nextPayAmt')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">차기 입금예정 <span id="sortWrap-nextPayAmt" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-blue-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 110px;" onclick="handleSort('lastAttachDate')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">최근 부착일 <span id="sortWrap-lastAttachDate" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 110px;" onclick="handleSort('lastPhotoDate')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">사진 확인일 <span id="sortWrap-lastPhotoDate" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 110px;" onclick="handleSort('refundAmt')" class="hide-on-mobile-col">
+                            <div class="flex items-center justify-between">환급 정보 <span id="sortWrap-refundAmt" class="sort-icon-wrap flex items-center"><i class="fas fa-sort text-slate-300 opacity-40"></i><span class="sort-priority"></span></span></div>
+                        </th>
+                        <th style="width: 80px;" class="hide-on-mobile-col">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="driverListBody"></tbody>
+            </table>
+        </div>
+        <div id="noData" class="hidden py-32 text-center bg-white rounded-2xl mt-4 border-2 border-dashed border-slate-200 shadow-sm">
+            <div class="text-slate-300 mb-3"><i class="fas fa-folder-open text-4xl"></i></div>
+            <p class="text-slate-500 font-bold">조건에 맞는 데이터가 없습니다.</p>
+        </div>
+
+        <!-- Floating Bulk Action Bar -->
+        <div id="bulkActionBar" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-4 rounded-full shadow-2xl z-[200] hidden items-center gap-6 transition-all border border-slate-700">
+            <div class="font-bold text-sm whitespace-nowrap">
+                <span id="bulkCount" class="text-blue-400 font-black text-lg mr-1">0</span>명 선택됨
+            </div>
+            <div class="w-px h-6 bg-slate-600"></div>
+            <div class="flex gap-2 whitespace-nowrap">
+                <button onclick="openBulkEditModal()" class="px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded-xl text-sm font-bold transition-colors">일괄 수정</button>
+                <button onclick="bulkDelete()" class="px-4 py-2 bg-red-500 hover:bg-red-400 rounded-xl text-sm font-bold transition-colors">일괄 삭제</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 이하 Modal 들은 기존과 동일 -->
+    <!-- Bulk Edit Modal -->
+    <div id="bulkEditModal" class="absolute inset-0 bg-slate-900/80 z-[300] hidden items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scroll rounded-3xl shadow-2xl">
+            <div class="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center border-b-blue-100">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800">데이터 일괄 수정</h2>
+                    <p class="text-xs font-bold text-blue-700 mt-1"><i class="fas fa-info-circle"></i> 입력한 항목만 선택된 <span id="bulkModalCount">0</span>명의 데이터에 덮어쓰기 됩니다.<br> (메모의 경우 기존 내용 뒤에 덧붙여집니다)</p>
+                </div>
+                <button onclick="closeBulkEditModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors text-xl">&times;</button>
+            </div>
+            <div class="p-6 md:p-8">
+                <form id="bulkEditForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="col-span-1 md:col-span-2 lg:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">광고주 변경</label><input type="text" name="bulkAdvertiser" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-xl outline-none font-bold text-slate-700" placeholder="수정 안함"></div>
+                    <div class="col-span-1 md:col-span-2 lg:col-span-3"><label class="text-xs font-bold text-slate-500 block mb-2">특이사항 메모 추가 (기존 메모 뒤에 병합됩니다)</label><input type="text" name="bulkMemo" maxlength="50" class="w-full p-3 bg-yellow-50 border border-yellow-200 focus:border-yellow-500 rounded-xl outline-none font-bold text-yellow-800" placeholder="수정 안함"></div>
+
+                    <div class="col-span-1 md:col-span-2"><label class="text-xs font-bold text-slate-500 block mb-2">계약기간</label><div class="flex gap-2"><input type="date" name="bulkContractStart" class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700"><span class="flex items-center text-slate-400">~</span><input type="date" name="bulkContractEnd" class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700"></div></div>
+                    
+                    <div class="col-span-1 md:col-span-2"><label class="text-xs font-bold text-slate-500 block mb-2">최근 입금(일/금액)</label><div class="flex gap-2"><input type="date" name="bulkLastPayDate" class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700"><input type="number" name="bulkLastPayAmt" class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700" placeholder="수정 안함"></div></div>
+                    
+                    <div class="col-span-1 md:col-span-2"><label class="text-xs font-bold text-blue-800 block mb-2">차기 입금예정(일/금액)</label><div class="flex gap-2"><input type="date" name="bulkNextPayDate" class="flex-1 p-3 bg-blue-50 border border-blue-200 rounded-xl outline-none focus:border-blue-700"><input type="number" name="bulkNextPayAmt" class="flex-1 p-3 bg-blue-50 border border-blue-200 rounded-xl outline-none focus:border-blue-700" placeholder="수정 안함"></div></div>
+                    
+                    <div class="col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">기준 입금일</label><input type="date" name="bulkBasePayDate" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700"></div>
+                    <div class="col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">최근 부착일</label><input type="date" name="bulkLastAttachDate" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700"></div>
+                    <div class="col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">사진 확인일</label><input type="date" name="bulkLastPhotoDate" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-700"></div>
+
+                    <div class="col-span-full flex gap-4 pt-4 mt-2 border-t border-slate-100">
+                        <button type="button" onclick="closeBulkEditModal()" class="flex-1 py-4 bg-slate-100 hover:bg-slate-200 rounded-2xl font-black text-slate-600 transition-colors">취소</button>
+                        <button type="submit" class="flex-[2] py-4 bg-blue-800 hover:bg-blue-900 text-white rounded-2xl font-black transition-colors shadow-lg">일괄 적용하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- History Popup Modal -->
+    <div id="historyModal" class="absolute inset-0 bg-slate-900/80 z-[300] hidden items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="p-5 bg-slate-50 border-b flex justify-between items-center">
+                <div>
+                    <h3 id="historyTitle" class="text-lg font-bold text-slate-800 leading-tight">입금 히스토리 관리</h3>
+                    <p id="historySub" class="text-[11px] text-slate-500 font-bold mt-1 uppercase tracking-wider"></p>
+                </div>
+                <button onclick="closeHistoryModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors text-xl">&times;</button>
+            </div>
+            <div class="p-4 bg-blue-50/50 border-b flex flex-wrap gap-2 items-end">
+                <div class="flex-1 min-w-[120px]">
+                    <label class="text-[10px] font-bold text-slate-500 block mb-1">입금 날짜</label>
+                    <input type="date" id="histDate" class="w-full p-2.5 text-sm rounded-xl border border-slate-200 outline-none focus:border-blue-700 bg-white">
+                </div>
+                <div class="flex-1 min-w-[120px]">
+                    <label class="text-[10px] font-bold text-slate-500 block mb-1">입금 금액</label>
+                    <input type="number" id="histAmt" placeholder="예: 90000" class="w-full p-2.5 text-sm rounded-xl border border-slate-200 outline-none focus:border-blue-700 bg-white">
+                </div>
+                <div class="w-28">
+                    <label class="text-[10px] font-bold text-slate-500 block mb-1">입금 분류</label>
+                    <select id="histType" class="w-full p-2.5 text-sm rounded-xl border border-slate-200 outline-none focus:border-blue-700 bg-white">
+                        <option value="정기입금">정기입금</option>
+                        <option value="최초">최초입금</option>
+                        <option value="추가">추가입금</option>
+                    </select>
+                </div>
+                <input type="hidden" id="histEditMode" value="new">
+                <input type="hidden" id="histEditSource" value="">
+                <input type="hidden" id="histEditIndex" value="">
+                
+                <button onclick="saveHistoryRecord()" id="histSaveBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm">추가</button>
+                <button onclick="resetHistoryForm()" id="histCancelBtn" class="bg-slate-200 hover:bg-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors hidden shadow-sm">취소</button>
+            </div>
+            <div class="max-h-[45vh] overflow-y-auto custom-scroll">
+                <table class="w-full text-left history-table">
+                    <thead class="sticky top-0 bg-white shadow-sm z-10">
+                        <tr class="text-[10px] text-slate-400 uppercase font-black border-b">
+                            <th class="py-3 px-4 w-12 text-center">No</th>
+                            <th class="py-3 px-4">입금 상세정보</th>
+                            <th class="py-3 px-4 text-right">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyListBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+            <div class="p-4 bg-slate-50 border-t flex justify-between items-center">
+                <span class="text-[12px] text-slate-500 font-bold">총 <span id="historyCount" class="text-blue-800 font-black text-sm">0</span>건의 입금 기록</span>
+                <button onclick="closeHistoryModal()" class="px-8 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-black text-sm transition-all shadow-md">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Edit Modal -->
+    <div id="driverModal" class="absolute inset-0 bg-slate-900/80 z-[200] hidden items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto custom-scroll rounded-3xl shadow-2xl">
+            <div class="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
+                <h2 id="modalTitle" class="text-2xl font-black text-slate-800">정보 수정</h2>
+                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors text-xl">&times;</button>
+            </div>
+            <div class="p-6 md:p-8">
+                <form id="driverForm" class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <input type="hidden" id="editIdx">
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">광고주</label><input type="text" name="advertiser" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700 placeholder-slate-300" placeholder="예: 바른병원"></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">이름*</label><input type="text" name="name" required class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700"></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">전화번호</label><input type="tel" name="phone" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700"></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">주민번호</label><input type="text" name="idNum" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700"></div>
+                    
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">차량번호* (숫자만 입력)</label><input type="text" name="carNum" required class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="예: 7777"></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">차종</label><input type="text" name="carType" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700"></div>
+                    <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 block mb-2">소속</label><input type="text" name="affiliation" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700"></div>
+                    
+                    <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 block mb-2">계약기간</label><div class="flex gap-2"><input type="date" name="contractStart" class="flex-1 p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none font-bold text-slate-600"><span class="flex items-center text-slate-400">~</span><input type="date" name="contractEnd" class="flex-1 p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none font-bold text-slate-600"></div></div>
+                    <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 block mb-2">계좌번호</label><input type="text" name="account" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none transition-colors font-bold text-slate-700"></div>
+                    
+                    <div class="md:col-span-4"><label class="text-xs font-bold text-slate-500 block mb-2">특이사항 메모 (최대 50자)</label><input type="text" name="memo" maxlength="50" placeholder="기사님에 대한 간단한 메모를 입력하세요 (이 내용도 검색 가능합니다)" class="w-full p-4 bg-yellow-50 border border-yellow-200 focus:border-yellow-500 rounded-2xl outline-none transition-colors font-bold text-yellow-800 placeholder-yellow-400"></div>
+
+                    <div class="md:col-span-4 grid grid-cols-1 md:grid-cols-6 gap-4 bg-blue-50/50 border border-blue-100 p-6 rounded-3xl">
+                        <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 mb-2 block">최초 입금(일/금액)</label><div class="flex flex-col gap-2"><input type="date" name="firstPayDate" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-700"><input type="number" name="firstPayAmt" placeholder="금액" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-700"></div></div>
+                        <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 mb-2 block">기준 입금일</label><input type="date" name="basePayDate" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-700"></div>
+                        <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 mb-2 block">최근 입금일</label><input type="date" name="lastPayDate" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-700"></div>
+                        <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 mb-2 block">최근 입금액</label><input type="number" name="lastPayAmt" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-700"></div>
+                        <div class="md:col-span-1"><label class="text-xs font-bold text-blue-800 mb-2 block">차기 입금예정일</label><input type="date" name="nextPayDate" class="w-full p-3 bg-white border border-blue-300 rounded-xl text-sm outline-none focus:border-blue-700"></div>
+                        <div class="md:col-span-1"><label class="text-xs font-bold text-blue-800 mb-2 block">차기 입금예정액</label><input type="number" name="nextPayAmt" placeholder="미입력시 9만" class="w-full p-3 bg-white border border-blue-300 rounded-xl text-sm outline-none focus:border-blue-700"></div>
+                    </div>
+
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">최근 부착일</label><input type="date" name="lastAttachDate" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none font-bold text-slate-600"></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">사진확인일</label><input type="date" name="lastPhotoDate" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none font-bold text-slate-600"></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">등급</label><select name="listType" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none font-bold text-slate-700"><option value="White">White</option><option value="Grey">Grey</option><option value="Black">Black</option></select></div>
+                    <div class="md:col-span-1"><label class="text-xs font-bold text-slate-500 block mb-2">상태</label><select name="adStatus" id="adStatusSelect" onchange="toggleRefundFields()" class="w-full p-4 bg-slate-50 border border-slate-200 focus:border-blue-700 rounded-2xl outline-none font-bold text-slate-700"><option value="광고중">광고중</option><option value="종료">종료</option></select></div>
+                    
+                    <div id="refundArea" class="hidden md:col-span-4 p-6 bg-orange-50 border border-orange-100 rounded-3xl grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-orange-600 block mb-2">환급금액</label>
+                            <input type="number" name="refundAmt" placeholder="환급금액 입력" class="w-full p-4 bg-white border border-orange-200 focus:border-orange-500 rounded-2xl outline-none font-bold text-slate-700">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-orange-600 block mb-2">환급여부</label>
+                            <select name="isRefunded" class="w-full p-4 bg-white border border-orange-200 focus:border-orange-500 rounded-2xl outline-none font-bold text-slate-700"><option value="미환급">미환급</option><option value="환급완료">환급완료</option></select>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-4 flex gap-4 pt-4 mt-2 border-t border-slate-100">
+                        <button type="button" onclick="closeModal()" class="flex-1 py-5 bg-slate-100 hover:bg-slate-200 rounded-2xl font-black text-slate-600 transition-colors">취소</button>
+                        <button type="submit" class="flex-[2] py-5 bg-blue-800 hover:bg-blue-900 text-white rounded-2xl font-black transition-colors shadow-lg shadow-blue-900/20">저장하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel Upload Modal -->
+    <div id="excelModal" class="absolute inset-0 bg-slate-900/80 z-[300] hidden items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white w-full max-w-2xl rounded-3xl p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 class="text-2xl font-black text-slate-800">데이터 일괄 추가 (Excel/CSV)</h3>
+                <button onclick="closeExcelModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors text-xl">&times;</button>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-xl mb-6">
+                <p class="text-sm text-blue-800 font-bold mb-1"><i class="fas fa-info-circle mr-1"></i> 업로드 안내</p>
+                <p class="text-xs text-blue-600 leading-relaxed">
+                    [데이터 추출]을 통해 다운로드 받은 양식(.xls, .xlsx, .csv)을 그대로 또는 수정하여 업로드 해주세요.<br>
+                    <strong>* 필수입력: 이름, 차량번호</strong> (그 외 공란 시 시스템 기본값으로 스마트 자동 채움 진행)
+                </p>
+            </div>
+            <input type="file" id="excelFile" accept=".xls, .xlsx, .csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="mb-6 w-full p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 cursor-pointer font-bold text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all">
+            <div class="flex gap-3">
+                <button onclick="closeExcelModal()" class="flex-1 py-4 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-600 transition-colors">취소</button>
+                <button onclick="handleExcelUpload()" class="flex-[2] py-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-black transition-colors shadow-lg shadow-emerald-700/30">데이터 병합하기</button>
+            </div>
+        </div>
+    </div>
+
+</div> <!-- end of appContainer -->
+
+
+    <!-- Firebase & System Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 알려주신 실제 Firebase Config 정보로 교체 완료
+        const firebaseConfig = {
+            apiKey: "AIzaSyASVv1CftpsLnnxMPAnrcxMNijdmvr0guw",
+            authDomain: "oz-tx11111.firebaseapp.com",
+            projectId: "oz-tx11111",
+            storageBucket: "oz-tx11111.firebasestorage.app",
+            messagingSenderId: "418749264147",
+            appId: "1:418749264147:web:8a90cabee6acd4e5cf6ae6",
+            measurementId: "G-1Y99EW71NS"
+        };
+        const appId = 'oz-taxi-app-v1-1';
+        
+        // 로컬(바탕화면) 파일로 실행하더라도 무조건 클라우드 서버에 접속하도록 강제 설정
+        window.isLocalFile = false; 
+        
+        if (!window.isLocalFile) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                
+                // 전역 스크립트 연결
+                window.firebaseDb = db;
+                window.firebaseAuth = auth;
+                window.firebaseAppId = appId;
+                window.firebaseSetDoc = setDoc;
+                window.firebaseDoc = doc;
+                window.firebaseOnSnapshot = onSnapshot;
+
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch(authErr) {
+                        console.error("Auth init failed:", authErr);
+                    }
+                };
+                initAuth();
+                
+                onAuthStateChanged(auth, (user) => {
+                    window.firebaseUser = user;
+                    if(user && window.loadFromCloud) {
+                        window.loadFromCloud();
+                    }
+                });
+            } catch(e) {
+                console.error("Firebase init failed:", e);
+            }
+        }
+    </script>
+
+    <script>
+        // --- System State & Helpers ---
+        let currentFilteredDrivers = [];
+        let activeSorts = []; 
+        const baseSortRules = [
+            {k: 'advertiser', type: 'string'}, {k: 'contractStart', type: 'string'},
+            {k: 'contractEnd', type: 'string'}, {k: 'lastPayDate', type: 'string'},
+            {k: 'nextPayDate', type: 'string'}, {k: 'nextPayAmt', type: 'number'},
+            {k: 'carNum', type: 'number'}, {k: 'name', type: 'string'}
+        ];
+
+        // --- Data Variables (Initialized below) ---
+        let drivers = [];
+        let advertiserGoals = {};
+
+        // Default Sample Data (Fallback if localStorage is empty)
+        const defaultDrivers = [
+            { advertiser: "바른병원", name: "김태형", carNum: "1001", listType: "White", adStatus: "광고중", contractStart: "2024-03-01", contractEnd: "2026-03-10", firstPayDate: "2024-03-01", basePayDate: "2024-06-01", lastPayDate: "2025-12-01", nextPayDate: "2026-03-01", nextPayAmt: 90000, memo: "우수 기사님 신규", autoFilled: {} },
+            { advertiser: "더큰병원", name: "박서준", carNum: "1002", listType: "Grey", adStatus: "광고중", contractStart: "2025-01-01", contractEnd: "2027-12-31", firstPayDate: "2025-01-01", basePayDate: "", lastPayDate: "2025-11-25", nextPayDate: "2026-02-25", nextPayAmt: 90000, memo: "재부착 요청", autoFilled: {} }
+        ];
+
+        function initData() {
+            drivers = JSON.parse(localStorage.getItem('oz_v4_data')) || defaultDrivers;
+            advertiserGoals = JSON.parse(localStorage.getItem('oz_v4_advertiser_goals')) || {};
+        }
+        initData();
+
+        function showMsg(message, isConfirm = false, onConfirm = null) {
+            document.getElementById('msgBoxText').innerText = message;
+            const cancelBtn = document.getElementById('msgBoxCancel');
+            const confirmBtn = document.getElementById('msgBoxConfirm');
+            
+            cancelBtn.style.display = isConfirm ? 'block' : 'none';
+            document.getElementById('msgBoxOverlay').classList.replace('hidden', 'flex');
+
+            confirmBtn.onclick = () => {
+                document.getElementById('msgBoxOverlay').classList.replace('flex', 'hidden');
+                if(onConfirm) onConfirm();
+            };
+            cancelBtn.onclick = () => {
+                document.getElementById('msgBoxOverlay').classList.replace('flex', 'hidden');
+            };
+        }
+
+        // --- Auth & Version Modals ---
+        function checkLogin() {
+            const isAuth = sessionStorage.getItem('oz_v4_auth');
+            if(!isAuth) {
+                document.getElementById('loginOverlay').classList.replace('hidden', 'flex');
+                document.body.classList.add('overflow-hidden');
+            } else {
+                document.getElementById('loginOverlay').classList.replace('flex', 'hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function login() {
+            const pwdInput = document.getElementById('loginPwd').value;
+            const sysPwd = localStorage.getItem('oz_v4_pwd') || '4946';
+            if(pwdInput === sysPwd) {
+                sessionStorage.setItem('oz_v4_auth', 'true');
+                document.getElementById('loginOverlay').classList.add('opacity-0');
+                setTimeout(() => {
+                    document.getElementById('loginOverlay').classList.replace('flex', 'hidden');
+                    document.getElementById('loginOverlay').classList.remove('opacity-0');
+                    document.body.classList.remove('overflow-hidden');
+                    document.getElementById('loginPwd').value = '';
+                }, 300);
+            } else { showMsg('비밀번호가 일치하지 않습니다.'); }
+        }
+
+        function openPwdChangeModal() {
+            document.getElementById('currentPwd').value = ''; document.getElementById('newPwd').value = ''; document.getElementById('newPwdConfirm').value = '';
+            document.getElementById('pwdChangeModal').classList.replace('hidden', 'flex');
+        }
+        function closePwdChangeModal() { document.getElementById('pwdChangeModal').classList.replace('flex', 'hidden'); }
+        
+        function changePassword() {
+            const currentPwd = document.getElementById('currentPwd').value; const newPwd = document.getElementById('newPwd').value; const confirmPwd = document.getElementById('newPwdConfirm').value;
+            const sysPwd = localStorage.getItem('oz_v4_pwd') || '4946';
+
+            if(currentPwd !== sysPwd) return showMsg('현재 비밀번호가 일치하지 않습니다.');
+            if(newPwd.length < 4) return showMsg('새 비밀번호는 4자리 이상이어야 합니다.');
+            if(newPwd !== confirmPwd) return showMsg('새 비밀번호 확인이 일치하지 않습니다.');
+
+            localStorage.setItem('oz_v4_pwd', newPwd);
+            showMsg('비밀번호가 성공적으로 변경되었습니다.\n다시 로그인해주세요.', false, () => {
+                closePwdChangeModal(); 
+                sessionStorage.removeItem('oz_v4_auth'); 
+                checkLogin();
+            });
+        }
+
+        function openVersionModal() { document.getElementById('versionModal').classList.replace('hidden', 'flex'); }
+        function closeVersionModal() { document.getElementById('versionModal').classList.replace('flex', 'hidden'); }
+
+        // --- Mobile View Toggle ---
+        let isMobileView = false;
+        function toggleMobileView() {
+            isMobileView = !isMobileView;
+            const appContainer = document.getElementById('appContainer');
+            const body = document.body;
+            const btn = document.getElementById('mobileToggleBtn');
+            const tableContainer = document.getElementById('mainTableContainer');
+            
+            if(isMobileView) {
+                // 모바일 뷰 활성화 상태 (전용 클래스 부여)
+                body.classList.add('mobile-view-active');
+                
+                body.classList.add('flex', 'justify-center', 'items-center', 'bg-slate-800');
+                body.classList.remove('bg-[#f8fafc]');
+                
+                appContainer.classList.add('w-[375px]', 'h-[781px]', 'rounded-[2.5rem]', 'border-[14px]', 'border-slate-900', 'shadow-[0_20px_50px_rgba(0,0,0,0.5)]', 'overflow-y-auto', 'overflow-x-hidden');
+                appContainer.classList.remove('w-full', 'min-h-screen');
+                
+                tableContainer.classList.add('mobile-view-scroll');
+
+                btn.innerHTML = '<i class="fas fa-desktop mr-1"></i>PC 뷰 전환';
+                btn.classList.replace('bg-purple-700', 'bg-slate-700');
+                btn.classList.replace('hover:bg-purple-600', 'hover:bg-slate-600');
+            } else {
+                // 모바일 뷰 비활성화
+                body.classList.remove('mobile-view-active');
+
+                body.classList.remove('flex', 'justify-center', 'items-center', 'bg-slate-800');
+                body.classList.add('bg-[#f8fafc]');
+                
+                appContainer.classList.remove('w-[375px]', 'h-[781px]', 'rounded-[2.5rem]', 'border-[14px]', 'border-slate-900', 'shadow-[0_20px_50px_rgba(0,0,0,0.5)]', 'overflow-y-auto', 'overflow-x-hidden');
+                appContainer.classList.add('w-full', 'min-h-screen');
+                
+                tableContainer.classList.remove('mobile-view-scroll');
+
+                btn.innerHTML = '<i class="fas fa-mobile-alt mr-1"></i>S25 모바일 뷰';
+                btn.classList.replace('bg-slate-700', 'bg-purple-700');
+                btn.classList.replace('hover:bg-slate-600', 'hover:bg-purple-600');
+            }
+        }
+
+        // 모바일 확장 패널 토글 함수
+        window.toggleMobileDetail = function(event, idx) {
+            // 데스크탑 모드에서는 클릭 이벤트 무시
+            if(!document.body.classList.contains('mobile-view-active')) return;
+            
+            const panel = document.getElementById(`detail-${idx}`);
+            const icon = document.getElementById(`icon-${idx}`);
+            
+            if(panel && icon) {
+                panel.classList.toggle('expanded');
+                if(panel.classList.contains('expanded')) {
+                    icon.style.transform = 'rotate(180deg)';
+                } else {
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            }
+        }
+
+        // --- Cloud Sync Logic ---
+        function getKSTTime() {
+            const now = new Date();
+            const options = { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            const kstParts = new Intl.DateTimeFormat('ko-KR', options).formatToParts(now);
+            
+            let y, m, d, hh, mm, ss;
+            kstParts.forEach(part => {
+                if(part.type === 'year') y = part.value;
+                if(part.type === 'month') m = part.value;
+                if(part.type === 'day') d = part.value;
+                if(part.type === 'hour') hh = part.value;
+                if(part.type === 'minute') mm = part.value;
+                if(part.type === 'second') ss = part.value;
+            });
+            return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+        }
+
+        function triggerSyncWarning() {
+            const syncBtn = document.getElementById('cloudSyncBtn');
+            syncBtn.classList.add('animate-pulse', 'border-yellow-400', 'text-yellow-100');
+            syncBtn.classList.remove('border-indigo-400', 'text-white');
+        }
+
+        function clearSyncWarning() {
+            const syncBtn = document.getElementById('cloudSyncBtn');
+            syncBtn.classList.remove('animate-pulse', 'border-yellow-400', 'text-yellow-100');
+            syncBtn.classList.add('border-indigo-400', 'text-white');
+        }
+
+        // 클라우드 저장 로직 개선
+        window.saveToCloud = async function() {
+            // 1. 오프라인(로컬 HTML)에서 직접 실행한 경우
+            if (window.isLocalFile) {
+                showMsg("현재 다운로드된 오프라인 파일 모드입니다.\n\n기기간 클라우드 동기화를 원하시면 제공된 '웹 링크(URL)'로 접속하셔야 합니다.\n\n(참고: 현재 사용 중인 기기의 브라우저 자체에는 데이터가 정상적으로 자동 저장되고 있습니다.)");
+                clearSyncWarning();
+                return;
+            }
+
+            // 2. 서버 접속 과정에 시간이 걸리는 중이거나 통신이 일시적으로 안될 때
+            if (!window.firebaseDb || !window.firebaseUser) {
+                showMsg("서버와 통신을 연결하는 중입니다.\n약 1~2초 후 다시 클릭해주세요.");
+                return;
+            }
+            
+            const kstString = getKSTTime();
+            document.getElementById('lastSyncTime').innerText = kstString;
+
+            const dataObj = {
+                drivers: drivers,
+                goals: advertiserGoals,
+                lastUpdated: kstString
+            };
+
+            const docRef = window.firebaseDoc(window.firebaseDb, 'artifacts', window.firebaseAppId, 'public', 'data', 'oz_state', 'main');
+            try {
+                const btnIcon = document.getElementById('saveBtnIcon');
+                if(btnIcon) btnIcon.className = "fas fa-spinner fa-spin mr-2";
+                
+                await window.firebaseSetDoc(docRef, dataObj);
+                
+                if(btnIcon) btnIcon.className = "fas fa-cloud-upload-alt mr-2";
+                clearSyncWarning();
+                showMsg('클라우드에 안전하게 동기화 되었습니다!\n\n이제 웹 링크를 통해 다른 컴퓨터나 스마트폰으로 접속하셔도 방금 전 저장된 자료를 동일하게 보실 수 있습니다.');
+            } catch(e) {
+                const btnIcon = document.getElementById('saveBtnIcon');
+                if(btnIcon) btnIcon.className = "fas fa-cloud-upload-alt mr-2";
+                showMsg('데이터 동기화 실패: 네트워크 상태를 확인해주세요.\n(' + e.message + ')');
+            }
+        };
+
+        let isFirstLoad = true;
+        window.loadFromCloud = function() {
+            if (!window.firebaseDb || !window.firebaseUser) return;
+            
+            const docRef = window.firebaseDoc(window.firebaseDb, 'artifacts', window.firebaseAppId, 'public', 'data', 'oz_state', 'main');
+            window.firebaseOnSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if(data.drivers) drivers = data.drivers;
+                    if(data.goals) advertiserGoals = data.goals;
+                    if(data.lastUpdated) {
+                        document.getElementById('lastSyncTime').innerText = data.lastUpdated;
+                        clearSyncWarning();
+                    }
+                    
+                    localStorage.setItem('oz_v4_data', JSON.stringify(drivers));
+                    localStorage.setItem('oz_v4_advertiser_goals', JSON.stringify(advertiserGoals));
+                    
+                    renderDrivers();
+                    if(isFirstLoad) {
+                        console.log("Cloud data loaded successfully");
+                        isFirstLoad = false;
+                    }
+                }
+            }, (error) => {
+                console.error("Cloud sync error:", error);
+            });
+        };
+
+        function saveDriverUpdate() { 
+            localStorage.setItem('oz_v4_data', JSON.stringify(drivers)); 
+            renderDrivers(); 
+            triggerSyncWarning(); // 로컬에 변동이 생기면 클라우드 저장 권장 애니메이션 시작
+        }
+
+
+        // --- Dates Helpers ---
+        function getDayName(dateStr) {
+            if(!dateStr) return '';
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? '' : `(${days[d.getDay()]})`;
+        }
+
+        function formatWithDay(dateStr) { return !dateStr ? '-' : `${dateStr}${getDayName(dateStr)}`; }
+        
+        function getDaysDiff(targetDateStr) {
+            if (!targetDateStr) return null;
+            const parts = targetDateStr.split('-');
+            if (parts.length !== 3) return null;
+            const target = new Date(parts[0], parts[1] - 1, parts[2]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); 
+            return Math.round((target - today) / (1000 * 60 * 60 * 24));
+        }
+
+        // --- Data Logic (Smart Roll-over) ---
+        function checkAndRollOver(driver) {
+            if (!driver.nextPayDate || driver.adStatus !== '광고중') return driver;
+            
+            const diff = getDaysDiff(driver.nextPayDate);
+            if (diff !== null && diff < 0) { 
+                if (!driver.payHistory) driver.payHistory = [];
+                const payAmt = driver.nextPayAmt ? Number(driver.nextPayAmt) : 90000;
+                driver.payHistory.push({ date: driver.nextPayDate, amount: payAmt, type: '정기입금' });
+
+                driver.lastPayDate = driver.nextPayDate;
+                driver.lastPayAmt = payAmt;
+                
+                let nParts = driver.nextPayDate.split('-');
+                let nDate = new Date(nParts[0], nParts[1]-1, nParts[2]);
+                nDate.setMonth(nDate.getMonth() + 3);
+                
+                let y = nDate.getFullYear();
+                let m = String(nDate.getMonth() + 1).padStart(2, '0');
+                let d = String(nDate.getDate()).padStart(2, '0');
+                driver.nextPayDate = `${y}-${m}-${d}`;
+                
+                return checkAndRollOver(driver);
+            }
+            return driver;
+        }
+
+        function processDriversData() {
+            let changed = false;
+            drivers = drivers.map(d => {
+                const updated = checkAndRollOver({...d});
+                if (JSON.stringify(updated) !== JSON.stringify(d)) changed = true;
+                return updated;
+            });
+            if (changed) saveDriverUpdate(); 
+        }
+
+        // --- Recent Searches ---
+        function getRecentSearches() { return JSON.parse(localStorage.getItem('oz_v4_recent_searches') || '[]'); }
+        function saveRecentSearch() {
+            const term = document.getElementById('searchInput').value.trim();
+            if (!term) return;
+            let searches = getRecentSearches();
+            searches = searches.filter(s => s !== term);
+            searches.unshift(term);
+            if (searches.length > 7) searches.pop();
+            localStorage.setItem('oz_v4_recent_searches', JSON.stringify(searches));
+            renderRecentSearches();
+        }
+        function clearRecentSearches() { localStorage.removeItem('oz_v4_recent_searches'); renderRecentSearches(); }
+        function useRecentSearch(term) { document.getElementById('searchInput').value = term; saveRecentSearch(); renderDrivers(); }
+        function renderRecentSearches() {
+            const searches = getRecentSearches();
+            const area = document.getElementById('recentSearchesArea');
+            const tags = document.getElementById('recentTags');
+            tags.innerHTML = '';
+            if (searches.length > 0) {
+                area.classList.remove('hidden');
+                searches.forEach(term => {
+                    const span = document.createElement('span');
+                    span.className = "text-[11px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded cursor-pointer hover:bg-blue-100 transition-colors";
+                    span.innerText = term;
+                    span.onclick = () => useRecentSearch(term);
+                    tags.appendChild(span);
+                });
+            } else { area.classList.add('hidden'); }
+        }
+
+        // --- Dashboard ---
+        function filterByAdvertiser(adv) { document.getElementById('searchInput').value = adv; saveRecentSearch(); renderDrivers(); }
+
+        function updateGoal(advertiser, element) {
+            let val = parseInt(element.innerText);
+            if(isNaN(val) || val < 0) val = 0;
+            advertiserGoals[advertiser] = val;
+            saveDriverUpdate();
+        }
+
+        function renderAdvertiserStats() {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = '';
+            
+            let stats = {};
+            drivers.forEach(d => {
+                let adv = d.advertiser ? d.advertiser.trim() : '미지정';
+                if(adv === '') adv = '미지정';
+                if(!stats[adv]) stats[adv] = 0;
+                if(d.adStatus === '광고중') stats[adv]++;
+            });
+
+            if(Object.keys(stats).length === 0) {
+                container.innerHTML = '<span class="text-xs text-slate-400">등록된 광고 데이터가 없습니다.</span>';
+                return;
+            }
+
+            Object.keys(stats).sort().forEach(adv => {
+                const current = stats[adv]; const goal = advertiserGoals[adv] || 0; const diff = goal - current;
+                let diffHtml = '';
+                if(diff > 0) diffHtml = `<span class="text-red-500 font-black">${diff}대 부족</span>`;
+                else if(diff < 0) diffHtml = `<span class="text-blue-500 font-black">${Math.abs(diff)}대 초과</span>`;
+                else diffHtml = `<span class="text-emerald-500 font-black">목표 달성</span>`;
+                if(goal === 0 && current > 0) diffHtml = `<span class="text-slate-400 font-bold">진행중</span>`;
+
+                const card = document.createElement('div');
+                card.className = "flex-shrink-0 bg-slate-50 border border-slate-200 rounded-xl p-3 min-w-[180px] hover:border-blue-300 transition-colors group";
+                card.innerHTML = `
+                    <div onclick="filterByAdvertiser('${adv}')" class="text-xs font-black text-slate-700 truncate mb-1 cursor-pointer group-hover:text-blue-700 transition-colors" title="${adv}">${adv}</div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-[10px] text-slate-500 font-bold">
+                            총 <span contenteditable="true" class="underline decoration-dashed decoration-blue-300 text-blue-700 outline-none hover:bg-white px-1 rounded cursor-text" onblur="updateGoal('${adv}', this)">${goal}</span>대 중
+                            <br><span class="text-lg text-slate-800 font-black">${current}</span>대 진행
+                        </div>
+                        <div class="text-[11px] bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">${diffHtml}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- Table Sorting ---
+        function handleSort(key) {
+            const existingIndex = activeSorts.findIndex(s => s.key === key);
+            if (existingIndex > -1) {
+                if (activeSorts[existingIndex].order === 'desc') { activeSorts[existingIndex].order = 'asc'; } 
+                else { activeSorts.splice(existingIndex, 1); }
+            } else {
+                if (activeSorts.length >= 2) { activeSorts[1] = { key: key, order: 'desc' }; } 
+                else { activeSorts.push({ key: key, order: 'desc' }); }
+            }
+            renderDrivers();
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('.sort-icon-wrap').forEach(wrap => {
+                const icon = wrap.querySelector('i'); const badge = wrap.querySelector('.sort-priority');
+                if(icon) icon.className = 'fas fa-sort text-slate-300 opacity-40 ml-1';
+                if(badge) badge.innerText = '';
+            });
+
+            activeSorts.forEach((sort, index) => {
+                const wrap = document.getElementById(`sortWrap-${sort.key}`);
+                if (wrap) {
+                    const icon = wrap.querySelector('i'); const badge = wrap.querySelector('.sort-priority');
+                    const orderClass = sort.order === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+                    const colorClass = index === 0 ? 'text-blue-700' : 'oz-text-accent'; 
+                    
+                    if(icon) icon.className = `fas ${orderClass} ml-1 ${colorClass} opacity-100`;
+                    if(badge) {
+                        badge.innerText = index + 1;
+                        badge.className = `sort-priority text-[10px] font-black ml-0.5 ${colorClass}`;
+                    }
+                }
+            });
+        }
+
+        // --- Render & Search & Sort ---
+        function renderDrivers() {
+            processDriversData(); 
+            renderAdvertiserStats();
+            renderRecentSearches();
+
+            document.getElementById('selectAll').checked = false;
+            updateBulkActionBar();
+            updateSortIcons();
+
+            const tbody = document.getElementById('driverListBody');
+            const noData = document.getElementById('noData');
+            const mainTable = document.getElementById('mainTable');
+            tbody.innerHTML = '';
+            
+            const rawSearchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const searchTerms = rawSearchTerm.split(/[\s,]+/).filter(t => t.length > 0); 
+            
+            const fContractStart = document.getElementById('filterContractStart').value;
+            const fContractEnd = document.getElementById('filterContractEnd').value;
+            const fLastStart = document.getElementById('filterLastStart').value;
+            const fLastEnd = document.getElementById('filterLastEnd').value;
+            const fNextStart = document.getElementById('filterNextStart').value;
+            const fNextEnd = document.getElementById('filterNextEnd').value;
+
+            let filtered = drivers.filter(d => {
+                // 1. Search
+                let matchSearch = searchTerms.every(term => {
+                    if (term === '종료') return d.adStatus === '종료';
+                    if (term === '미환급') return d.adStatus === '종료' && d.isRefunded === '미환급';
+                    if (term === '입금임박') { const diff = getDaysDiff(d.nextPayDate); return (diff !== null && diff <= 7 && diff > 0 && d.adStatus === '광고중'); }
+                    if (term === '오늘입금') { const diff = getDaysDiff(d.nextPayDate); return (diff === 0 && d.adStatus === '광고중'); }
+                    if (term === '종료임박') { const diff = getDaysDiff(d.contractEnd); return (diff !== null && diff <= 40 && diff >= 0 && d.adStatus === '광고중'); }
+                    
+                    const searchTarget = Object.values(d).join(' ').toLowerCase() + ' ' + (d.memo || '').toLowerCase();
+                    return searchTarget.includes(term);
+                });
+
+                // 2. Date Filter
+                let matchDate = true;
+                if (fContractStart && d.contractEnd < fContractStart) matchDate = false;
+                if (fContractEnd && d.contractEnd > fContractEnd) matchDate = false;
+                if (fLastStart && d.lastPayDate < fLastStart) matchDate = false;
+                if (fLastEnd && d.lastPayDate > fLastEnd) matchDate = false;
+                if (fNextStart && d.nextPayDate < fNextStart) matchDate = false;
+                if (fNextEnd && d.nextPayDate > fNextEnd) matchDate = false;
+
+                return matchSearch && matchDate;
+            });
+
+            // 3. Sorting
+            filtered.sort((a, b) => {
+                if (activeSorts.length > 0) {
+                    for (let i = 0; i < activeSorts.length; i++) {
+                        let rule = activeSorts[i];
+                        let valA = a[rule.key]; let valB = b[rule.key];
+                        
+                        const numericKeys = ['firstPayAmt', 'lastPayAmt', 'nextPayAmt', 'refundAmt', 'carNum'];
+                        if (numericKeys.includes(rule.key)) {
+                            valA = Number(valA) || 0; valB = Number(valB) || 0;
+                        } else {
+                            valA = (valA || '').toString().toLowerCase(); valB = (valB || '').toString().toLowerCase();
+                        }
+
+                        if (valA < valB) return rule.order === 'asc' ? -1 : 1;
+                        if (valA > valB) return rule.order === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                } else {
+                    for(let rule of baseSortRules) {
+                        let va = a[rule.k]; let vb = b[rule.k];
+                        if (rule.type === 'number') { va = Number(va) || 0; vb = Number(vb) || 0; } 
+                        else { va = (va || '').toString().toLowerCase(); vb = (vb || '').toString().toLowerCase(); }
+                        if (va > vb) return -1; 
+                        if (va < vb) return 1;
+                    }
+                    return 0;
+                }
+            });
+
+            currentFilteredDrivers = filtered;
+
+            if(filtered.length === 0) {
+                noData.classList.remove('hidden');
+                mainTable.style.display = 'none';
+            } else {
+                noData.classList.add('hidden');
+                mainTable.style.display = 'table';
+            }
+
+            filtered.forEach(d => {
+                const idx = drivers.indexOf(d);
+                const tr = document.createElement('tr');
+                tr.className = "main-row-item transition-all duration-300";
+                
+                const nextDiffDays = getDaysDiff(d.nextPayDate);
+                const isUrgent = nextDiffDays !== null && nextDiffDays <= 7 && nextDiffDays >= 1 && d.adStatus === '광고중';
+                const isToday = nextDiffDays === 0 && d.adStatus === '광고중';
+                
+                const endDiffDays = getDaysDiff(d.contractEnd);
+                const isEndUrgent = endDiffDays !== null && endDiffDays <= 40 && endDiffDays >= 0 && d.adStatus === '광고중';
+
+                const listColors = { White: 'bg-emerald-100 text-emerald-700', Grey: 'bg-slate-200 text-slate-700', Black: 'bg-red-100 text-red-700' };
+                const nextAmtDisplay = d.nextPayAmt ? Number(d.nextPayAmt).toLocaleString() : "90,000";
+                
+                let carNumColor = "text-slate-500";
+                if (d.adStatus === '종료') carNumColor = "text-red-600";
+                else if (d.memo && d.memo.includes('재부착')) carNumColor = "text-blue-600";
+                else if (d.memo && d.memo.includes('신규')) carNumColor = "text-emerald-600";
+
+                const memoHtml = d.memo ? `<div class="mt-1.5 text-[11px] bg-yellow-50 text-yellow-800 px-2 py-1 rounded-md border border-yellow-200 max-w-[200px] leading-tight break-keep" title="${d.memo}"><i class="fas fa-sticky-note mr-1 opacity-60"></i>${d.memo}</div>` : '';
+
+                let nextPayHtml = `<div class="text-blue-800 font-black text-[13px]">${formatWithDay(d.nextPayDate)}</div>
+                                   <div class="text-[12px] font-bold text-slate-500 tracking-tighter">${nextAmtDisplay}원</div>`;
+                if (isToday) {
+                    nextPayHtml = `<div class="px-2 py-1.5 rounded-lg border border-purple-300 bg-purple-50 today-pulse shadow-sm">
+                                    <div class="text-purple-700 font-black text-[13px]">${formatWithDay(d.nextPayDate)}</div>
+                                    <div class="text-[12px] font-bold text-purple-600 tracking-tighter">${nextAmtDisplay}원</div>
+                                    <div class="text-[10px] text-white bg-purple-600 font-black tracking-tighter mt-1 block px-1 py-0.5 rounded shadow-sm text-center"><i class="fas fa-bell mr-0.5 animate-bounce"></i>오늘입금</div>
+                                   </div>`;
+                } else if (isUrgent) {
+                    nextPayHtml = `<div class="px-2 py-1.5 rounded-lg border border-red-200 urgent-pulse shadow-sm">
+                                    <div class="text-red-700 font-black text-[13px]">${formatWithDay(d.nextPayDate)}</div>
+                                    <div class="text-[12px] font-bold text-red-600 tracking-tighter">${nextAmtDisplay}원</div>
+                                    <div class="text-[10px] text-red-600 font-black tracking-tighter mt-1 bg-white block px-1 py-0.5 rounded shadow-sm text-center"><i class="fas fa-exclamation-triangle mr-0.5"></i>입금임박 (${nextDiffDays}일 전)</div>
+                                   </div>`;
+                } else {
+                    nextPayHtml = `<div>${nextPayHtml}</div>`;
+                }
+
+                // tr의 HTML 구조
+                // 데스크탑에서는 가로 테이블 형식, 모바일에서는 이 tr 내부의 1번째 td가 카드가 됨.
+                tr.innerHTML = `
+                    <td class="sticky-col !p-0 cursor-pointer md:cursor-auto" onclick="toggleMobileDetail(event, ${idx})">
+                        <div class="flex items-start h-full px-4 py-3">
+                            <input type="checkbox" class="row-checkbox mr-3 mt-1" value="${idx}" onchange="updateBulkActionBar()" onclick="event.stopPropagation()">
+                            <div class="w-full overflow-hidden">
+                                <div class="font-black text-slate-800 text-[14px] flex items-center justify-between pr-2 group">
+                                    <span class="truncate hover:text-blue-600 transition-colors cursor-pointer" onclick="event.stopPropagation(); openHistoryModal(${idx});">${d.name} <i class="fas fa-list-ul text-[10px] opacity-20 hover:opacity-100 text-blue-500 ml-1"></i></span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="status-badge ${d.adStatus==='광고중'?'bg-blue-100 text-blue-800':'bg-slate-200 text-slate-600'} hide-on-desktop">${d.adStatus}</span>
+                                        <i class="fas fa-chevron-down text-slate-400 mobile-only-icon ml-1" id="icon-${idx}"></i>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center pr-2 mt-0.5">
+                                    <div class="text-[13px] ${carNumColor} font-black tracking-tight">${d.carNum}</div>
+                                    <div class="hide-on-desktop text-blue-800 font-black text-xs">${nextAmtDisplay}원</div>
+                                </div>
+                                ${memoHtml}
+                            </div>
+                        </div>
+                        
+                        <!-- 모바일 확장 상세 정보 패널 -->
+                        <div id="detail-${idx}" class="mobile-detail-panel bg-slate-50 px-4 pb-4 pt-3 border-t border-slate-200 cursor-default" onclick="event.stopPropagation();">
+                            <div class="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                                <div><span class="text-slate-400 font-bold text-[10px] block">광고주 / 상태</span>
+                                     <span class="font-black text-slate-700">${d.advertiser || '-'} <span class="ml-1 text-[10px] font-normal status-badge ${listColors[d.listType] || listColors['Grey']}">${d.listType || 'Grey'}</span></span>
+                                </div>
+                                <div><span class="text-slate-400 font-bold text-[10px] block">계약기간</span><span class="font-bold text-slate-600">${formatWithDay(d.contractStart)} ~<br>${formatWithDay(d.contractEnd)}</span></div>
+                                <div><span class="text-slate-400 font-bold text-[10px] block">연락처 / 차종</span><span class="font-bold text-slate-600">${d.phone || '-'} <br> ${d.carType || '-'}</span></div>
+                                <div><span class="text-slate-400 font-bold text-[10px] block">계좌번호</span><span class="font-bold text-slate-600 break-all">${d.account || '-'}</span></div>
+                                
+                                <div class="col-span-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm mt-1">
+                                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+                                        <span class="text-slate-500 font-bold text-[11px]">최근 입금</span>
+                                        <span class="font-bold text-slate-700">${formatWithDay(d.lastPayDate)} | <span class="text-blue-700 font-black">${d.lastPayAmt ? d.lastPayAmt.toLocaleString()+'원' : '-'}</span></span>
+                                    </div>
+                                    <div class="flex justify-between items-center bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                        <span class="text-blue-800 font-black text-[11px]">차기 입금</span>
+                                        <div class="text-right flex flex-col items-end gap-0.5">
+                                            ${nextPayHtml.replace(/<div/g, '<span').replace(/<\/div>/g, '</span>')} 
+                                        </div>
+                                    </div>
+                                    ${d.adStatus === '종료' ? `
+                                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                                            <span class="text-orange-600 font-bold text-[11px]">환급 정보</span>
+                                            <div class="text-right">
+                                                <span class="font-black text-orange-600">${(d.refundAmt||0).toLocaleString()}원</span>
+                                                <span class="text-[10px] font-bold text-orange-400 ml-1">(${d.isRefunded||'미환급'})</span>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                
+                                <div class="col-span-2 flex gap-2 justify-end mt-2 pt-3 border-t border-slate-200">
+                                    <button onclick="event.stopPropagation(); openModal('edit', ${idx})" class="px-3 py-2.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-bold text-xs flex-1 transition-colors flex items-center justify-center"><i class="fas fa-pen mr-1"></i> 수정</button>
+                                    <button onclick="event.stopPropagation(); deleteDriver(${idx})" class="px-3 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg font-bold text-xs flex-1 transition-colors flex items-center justify-center"><i class="fas fa-trash mr-1"></i> 삭제</button>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <!-- 아래 컬럼들은 모바일에서 숨김처리됨 (hide-on-mobile-col 클래스 부여됨) -->
+                    <td class="hide-on-mobile-col">
+                        <div class="flex flex-col items-start gap-1">
+                            <span class="status-badge ${d.adStatus==='광고중'?'bg-blue-100 text-blue-800':'bg-slate-200 text-slate-600'}">${d.adStatus}</span>
+                            <span class="status-badge ${listColors[d.listType] || listColors['Grey']}">${d.listType || 'Grey'}</span>
+                        </div>
+                    </td>
+                    <td class="font-black text-[13px] text-slate-700 tracking-tight leading-snug break-words max-w-[130px] hide-on-mobile-col">${d.advertiser || '-'}</td>
+                    <td class="text-[12px] p-1 hide-on-mobile-col">
+                        <div class="p-2 rounded-lg border border-transparent ${isEndUrgent ? 'bg-yellow-50 border-yellow-300' : ''}">
+                            <div class="text-slate-500 tracking-tighter">시작: ${formatWithDay(d.contractStart)}</div>
+                            <div class="font-bold ${isEndUrgent ? 'text-yellow-800' : 'text-slate-800'} tracking-tighter mt-0.5">종료: ${formatWithDay(d.contractEnd)}</div>
+                            ${isEndUrgent ? `<div class="text-[10px] text-yellow-800 font-black tracking-tighter mt-1.5 bg-yellow-200 inline-block px-1.5 py-0.5 rounded shadow-sm"><i class="fas fa-clock mr-0.5"></i>종료임박 (${endDiffDays}일)</div>` : ''}
+                        </div>
+                    </td>
+                    <td class="text-[12px] hide-on-mobile-col">
+                        <div class="font-bold text-slate-700 truncate max-w-[110px]" title="${d.carType || '-'}">${d.carType || '-'}</div>
+                        <div class="text-slate-400 mt-0.5 truncate max-w-[110px]">${d.affiliation || '-'}</div>
+                    </td>
+                    <td class="text-[12px] hide-on-mobile-col">
+                        <div class="font-bold text-slate-700 tracking-tighter">${d.phone || '-'}</div>
+                        <div class="text-slate-400 font-mono tracking-tighter mt-0.5">${d.idNum || '-'}</div>
+                    </td>
+                    <td class="text-[12px] font-bold text-slate-600 tracking-tighter break-words max-w-[140px] hide-on-mobile-col">${d.account || '-'}</td>
+                    <td class="text-[12px] hide-on-mobile-col">
+                        <div class="text-slate-500 tracking-tighter">${formatWithDay(d.firstPayDate)}</div>
+                        <div class="font-bold text-slate-700 tracking-tighter mt-0.5">${d.firstPayAmt ? d.firstPayAmt.toLocaleString() + '원' : '-'}</div>
+                    </td>
+                    <td class="text-[12px] font-bold text-emerald-700 bg-emerald-50/50 rounded-lg text-center tracking-tighter p-2 hide-on-mobile-col">${formatWithDay(d.basePayDate)}</td>
+                    <td class="text-[12px] bg-slate-50/80 rounded-lg p-2 hide-on-mobile-col">
+                        <div class="font-bold text-slate-600 tracking-tighter">${formatWithDay(d.lastPayDate)}</div>
+                        <div class="text-blue-800 font-black tracking-tighter mt-0.5">${d.lastPayAmt ? d.lastPayAmt.toLocaleString() + '원' : '-'}</div>
+                    </td>
+                    <td class="hide-on-mobile-col">${nextPayHtml}</td>
+                    <td class="text-[12px] font-bold text-slate-500 tracking-tighter hide-on-mobile-col">${formatWithDay(d.lastAttachDate)}</td>
+                    <td class="text-[12px] font-bold text-slate-500 tracking-tighter hide-on-mobile-col">${formatWithDay(d.lastPhotoDate)}</td>
+                    <td class="text-[12px] hide-on-mobile-col">
+                        ${d.adStatus==='종료'?`<div class="text-orange-600 font-black tracking-tighter">${(d.refundAmt||0).toLocaleString()}원</div><div class="text-[10px] font-bold text-orange-400 mt-0.5">${d.isRefunded||'미환급'}</div>`:'<span class="text-slate-300">-</span>'}
+                    </td>
+                    <td class="hide-on-mobile-col">
+                        <div class="flex gap-1.5 flex-col lg:flex-row">
+                            <button onclick="openModal('edit', ${idx})" class="px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-md font-bold text-[11px] hover:bg-blue-100 transition-colors">수정</button>
+                            <button onclick="deleteDriver(${idx})" class="px-2.5 py-1.5 bg-red-50 text-red-600 rounded-md font-bold text-[11px] hover:bg-red-100 transition-colors">삭제</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- Bulk Actions ---
+        function toggleAll(source) {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateBulkActionBar();
+        }
+
+        function updateBulkActionBar() {
+            const checked = document.querySelectorAll('.row-checkbox:checked');
+            const bar = document.getElementById('bulkActionBar');
+            if(checked.length > 0) {
+                bar.classList.remove('hidden'); bar.classList.add('flex');
+                document.getElementById('bulkCount').innerText = checked.length;
+            } else {
+                bar.classList.add('hidden'); bar.classList.remove('flex');
+            }
+        }
+
+        function getSelectedIndices() { return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => parseInt(cb.value)); }
+
+        function bulkDelete() {
+            const indices = getSelectedIndices();
+            if(indices.length === 0) return;
+            
+            showMsg(`선택한 ${indices.length}명의 데이터를 일괄 삭제하시겠습니까?\n이 작업은 복구할 수 없습니다.`, true, () => {
+                indices.sort((a,b) => b - a);
+                indices.forEach(idx => drivers.splice(idx, 1));
+                saveDriverUpdate();
+                document.getElementById('selectAll').checked = false;
+                updateBulkActionBar();
+            });
+        }
+
+        function openBulkEditModal() {
+            const count = getSelectedIndices().length;
+            if(count === 0) return;
+            document.getElementById('bulkModalCount').innerText = count;
+            document.getElementById('bulkEditForm').reset();
+            document.getElementById('bulkEditModal').classList.replace('hidden', 'flex');
+        }
+
+        function closeBulkEditModal() { document.getElementById('bulkEditModal').classList.replace('flex', 'hidden'); }
+
+        document.getElementById('bulkEditForm').onsubmit = (e) => {
+            e.preventDefault();
+            const indices = getSelectedIndices();
+            if(indices.length === 0) return closeBulkEditModal();
+
+            const data = Object.fromEntries(new FormData(e.target).entries());
+            
+            indices.forEach(idx => {
+                let d = drivers[idx];
+                if (data.bulkAdvertiser) d.advertiser = data.bulkAdvertiser;
+                if (data.bulkContractStart) d.contractStart = data.bulkContractStart;
+                if (data.bulkContractEnd) d.contractEnd = data.bulkContractEnd;
+                if (data.bulkLastPayDate) d.lastPayDate = data.bulkLastPayDate;
+                if (data.bulkLastPayAmt) d.lastPayAmt = Number(data.bulkLastPayAmt);
+                if (data.bulkNextPayDate) d.nextPayDate = data.bulkNextPayDate;
+                if (data.bulkNextPayAmt) d.nextPayAmt = Number(data.bulkNextPayAmt);
+                if (data.bulkBasePayDate) d.basePayDate = data.bulkBasePayDate;
+                if (data.bulkLastAttachDate) d.lastAttachDate = data.bulkLastAttachDate;
+                if (data.bulkLastPhotoDate) d.lastPhotoDate = data.bulkLastPhotoDate;
+                
+                if (data.bulkMemo && data.bulkMemo.trim() !== '') {
+                    if (d.memo && d.memo.trim() !== '') {
+                        d.memo = (d.memo.trim() + ' ' + data.bulkMemo.trim()).substring(0, 50);
+                    } else {
+                        d.memo = data.bulkMemo.trim().substring(0, 50);
+                    }
+                }
+            });
+
+            saveDriverUpdate(); 
+            closeBulkEditModal(); 
+            showMsg(`${indices.length}명의 데이터가 일괄 수정되었습니다.`);
+            document.getElementById('selectAll').checked = false;
+            updateBulkActionBar();
+        };
+
+        // --- Driver Delete (Single) ---
+        function deleteDriver(idx) {
+            const d = drivers[idx];
+            showMsg(`'${d.name}' 사장님(차량: ${d.carNum}) 정보를 정말 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.`, true, () => {
+                drivers.splice(idx, 1);
+                saveDriverUpdate();
+            });
+        }
+
+        // --- History Modal & Edit Logic ---
+        let currentHistoryDriverIdx = null;
+
+        function openHistoryModal(idx) {
+            currentHistoryDriverIdx = idx;
+            const d = drivers[idx];
+            const modal = document.getElementById('historyModal');
+            document.getElementById('historyTitle').innerText = `${d.name} 사장님`;
+            document.getElementById('historySub').innerText = `${d.carNum} | ${d.affiliation}`;
+            resetHistoryForm(); renderHistoryList(); modal.classList.replace('hidden', 'flex');
+        }
+
+        function closeHistoryModal() { document.getElementById('historyModal').classList.replace('flex', 'hidden'); currentHistoryDriverIdx = null; }
+
+        function resetHistoryForm() {
+            document.getElementById('histDate').value = ''; document.getElementById('histAmt').value = ''; document.getElementById('histType').value = '정기입금';
+            document.getElementById('histEditMode').value = 'new'; document.getElementById('histEditSource').value = ''; document.getElementById('histEditIndex').value = '';
+            document.getElementById('histSaveBtn').innerText = '추가'; document.getElementById('histSaveBtn').className = 'bg-blue-800 hover:bg-blue-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm';
+            document.getElementById('histCancelBtn').classList.add('hidden');
+        }
+
+        function renderHistoryList() {
+            if (currentHistoryDriverIdx === null) return;
+            const d = drivers[currentHistoryDriverIdx];
+            const listBody = document.getElementById('historyListBody');
+            listBody.innerHTML = '';
+
+            const historyData = [];
+            if (d.firstPayDate) historyData.push({ source: 'first', date: d.firstPayDate, amount: d.firstPayAmt || 0, type: '최초' });
+            if (d.payHistory && d.payHistory.length > 0) {
+                d.payHistory.forEach((item, index) => { historyData.push({ source: 'history', index: index, date: item.date, amount: item.amount, type: item.type || '정기입금' }); });
+            }
+
+            historyData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            document.getElementById('historyCount').innerText = historyData.length;
+
+            if (historyData.length === 0) {
+                listBody.innerHTML = `<tr><td colspan="3" class="py-12 text-center text-slate-400 font-bold text-xs bg-white">등록된 입금 기록이 없습니다.</td></tr>`;
+            } else {
+                historyData.forEach((item, i) => {
+                    const row = document.createElement('tr');
+                    row.className = 'history-row group transition-colors';
+                    const amountDisp = Number(item.amount).toLocaleString() + '원';
+                    
+                    row.innerHTML = `
+                        <td class="py-3 px-4 text-[11px] text-slate-400 font-black text-center">${historyData.length - i}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-3">
+                                <div><div class="text-[14px] font-black text-slate-800">${item.date}</div><div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">${getDayName(item.date)}요일</div></div>
+                                <div class="w-px h-6 bg-slate-200"></div>
+                                <div><div class="text-[15px] font-black text-blue-800">${amountDisp}</div><div class="text-[10px] text-slate-400 font-bold">${item.type}</div></div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <div class="flex gap-1 justify-end opacity-20 group-hover:opacity-100 transition-opacity">
+                                <button onclick="editHistoryItem('${item.source}', ${item.index !== undefined ? item.index : 'null'}, '${item.date}', ${item.amount}, '${item.type}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center"><i class="fas fa-pen text-[10px]"></i></button>
+                                <button onclick="deleteHistoryItem('${item.source}', ${item.index !== undefined ? item.index : 'null'})" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center"><i class="fas fa-trash text-[10px]"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    listBody.appendChild(row);
+                });
+            }
+        }
+
+        function editHistoryItem(source, index, date, amount, type) {
+            document.getElementById('histDate').value = date; document.getElementById('histAmt').value = amount; document.getElementById('histType').value = type;
+            document.getElementById('histEditMode').value = 'edit'; document.getElementById('histEditSource').value = source; document.getElementById('histEditIndex').value = index;
+            document.getElementById('histSaveBtn').innerText = '수정완료'; document.getElementById('histSaveBtn').className = 'bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm';
+            document.getElementById('histCancelBtn').classList.remove('hidden');
+        }
+
+        function deleteHistoryItem(source, index) {
+            showMsg('이 입금 기록을 삭제하시겠습니까?', true, () => {
+                const d = drivers[currentHistoryDriverIdx];
+                if (source === 'first') { d.firstPayDate = ''; d.firstPayAmt = 0; } else if (source === 'history' && index !== null) { d.payHistory.splice(index, 1); }
+                saveDriverUpdate(); renderHistoryList();
+            });
+        }
+
+        function saveHistoryRecord() {
+            if (currentHistoryDriverIdx === null) return;
+            const date = document.getElementById('histDate').value; const amount = Number(document.getElementById('histAmt').value || 0); const type = document.getElementById('histType').value;
+            if(!date) return showMsg('입금 날짜를 입력해주세요.');
+
+            const d = drivers[currentHistoryDriverIdx]; const mode = document.getElementById('histEditMode').value;
+            if (mode === 'new') { if(!d.payHistory) d.payHistory = []; d.payHistory.push({ date, amount, type }); }
+            else if (mode === 'edit') {
+                const source = document.getElementById('histEditSource').value; const index = document.getElementById('histEditIndex').value;
+                if (source === 'first') { d.firstPayDate = date; d.firstPayAmt = amount; } else if (source === 'history') { d.payHistory[index] = { date, amount, type }; }
+            }
+            saveDriverUpdate(); resetHistoryForm(); renderHistoryList();
+        }
+
+        // --- Form Modal Functions ---
+        function openModal(mode, idx = null) {
+            document.getElementById('driverModal').classList.replace('hidden', 'flex');
+            const f = document.getElementById('driverForm'); f.reset(); document.getElementById('editIdx').value = '';
+            if(mode === 'edit' && idx !== null) {
+                const d = drivers[idx]; document.getElementById('editIdx').value = idx;
+                Object.keys(d).forEach(k => { if(f.elements[k]) f.elements[k].value = d[k]; });
+                document.getElementById('modalTitle').innerText = '정보 수정';
+            } else { document.getElementById('modalTitle').innerText = '신규 사장님 등록'; }
+            toggleRefundFields();
+        }
+
+        function closeModal() { document.getElementById('driverModal').classList.replace('flex', 'hidden'); }
+        
+        function toggleRefundFields() { 
+            const status = document.getElementById('adStatusSelect').value; const refundArea = document.getElementById('refundArea');
+            if(status === '종료') { refundArea.classList.remove('hidden'); refundArea.classList.add('grid'); } else { refundArea.classList.add('hidden'); refundArea.classList.remove('grid'); }
+        }
+        
+        document.getElementById('driverForm').onsubmit = (e) => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target).entries());
+            data.lastPayAmt = Number(data.lastPayAmt || 0); data.firstPayAmt = Number(data.firstPayAmt || 0);
+            data.nextPayAmt = data.nextPayAmt ? Number(data.nextPayAmt) : ""; data.refundAmt = Number(data.refundAmt || 0);
+            data.autoFilled = {}; 
+
+            const idx = document.getElementById('editIdx').value;
+            if(idx === '') { data.payHistory = []; drivers.unshift(data); showMsg('신규 등록이 완료되었습니다.'); }
+            else { data.payHistory = drivers[idx].payHistory || []; drivers[idx] = data; showMsg('수정이 완료되었습니다.'); }
+            saveDriverUpdate(); closeModal();
+        };
+
+        // --- EXCEL IMPORT ---
+        function showExcelImportModal() { document.getElementById('excelFile').value = ''; document.getElementById('excelModal').classList.replace('hidden', 'flex'); }
+        function closeExcelModal() { document.getElementById('excelModal').classList.replace('flex', 'hidden'); }
+
+        function parseExcelDate(val) {
+            if (val === undefined || val === null || val === '') return '';
+            if (typeof val === 'number') {
+                const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+                return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+            }
+            let str = String(val).replace(/[\.\/]/g, '-').trim();
+            if (str.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) { let parts = str.split('-'); return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`; }
+            const d = new Date(val); if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+            return String(val);
+        }
+
+        function handleExcelUpload() {
+            const fileInput = document.getElementById('excelFile'); const file = fileInput.files[0];
+            if(!file) return showMsg('파일을 선택해주세요.');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, {defval: "", raw: true});
+
+                    if(json.length === 0) return showMsg('데이터가 없습니다.');
+
+                    const requiredHeaders = ["이름", "차량번호"]; const headers = Object.keys(json[0]);
+                    const isValid = requiredHeaders.every(h => headers.includes(h));
+                    if(!isValid) return showMsg('올바른 양식이 아닙니다. 시스템에서 추출한 엑셀 파일을 사용해주세요.\n(필수 헤더: 이름, 차량번호)');
+
+                    let addCount = 0;
+                    json.forEach(row => {
+                        let name = (row['이름'] || '').toString().trim(); let carNumRaw = (row['차량번호'] || '').toString().trim();
+                        let carNum = carNumRaw.replace(/[^0-9]/g, '');
+
+                        if(!name || !carNum) return;
+
+                        let autoFlag = {};
+                        let lType = row['등급']; if(!lType) { lType = 'Grey'; autoFlag.listType = true; }
+                        let aStatus = row['상태']; if(!aStatus) { aStatus = '광고중'; autoFlag.adStatus = true; }
+                        
+                        let nAmtStr = row['차기입금액']; if (typeof nAmtStr === 'string') nAmtStr = nAmtStr.replace(/,/g, '');
+                        let nAmt = nAmtStr ? Number(nAmtStr) : null; if(nAmt === null || isNaN(nAmt)) { nAmt = 90000; autoFlag.nextPayAmt = true; }
+
+                        let lastDate = parseExcelDate(row['최근입금일']); let nDate = parseExcelDate(row['차기입금일']);
+
+                        if(!nDate && lastDate) {
+                            let lD = new Date(lastDate);
+                            if(!isNaN(lD.getTime())) { lD.setMonth(lD.getMonth() + 3); nDate = lD.toISOString().split('T')[0]; autoFlag.nextPayDate = true; }
+                        }
+
+                        let fAmtStr = row['최초입금액']; if (typeof fAmtStr === 'string') fAmtStr = fAmtStr.replace(/,/g, '');
+                        let lAmtStr = row['최근입금액']; if (typeof lAmtStr === 'string') lAmtStr = lAmtStr.replace(/,/g, '');
+                        let rAmtStr = row['환급금액']; if (typeof rAmtStr === 'string') rAmtStr = rAmtStr.replace(/,/g, '');
+
+                        let newDriver = {
+                            advertiser: row['광고주'] || '', name: name, phone: row['전화번호'] || '', idNum: row['주민번호'] || '',
+                            carNum: carNum, carType: row['차종'] || '', affiliation: row['소속'] || '', contractStart: parseExcelDate(row['계약시작']),
+                            contractEnd: parseExcelDate(row['계약종료']), account: row['계좌번호'] || '', firstPayDate: parseExcelDate(row['최초입금일']),
+                            firstPayAmt: Number(fAmtStr) || 0, basePayDate: parseExcelDate(row['기준입금일']), lastPayDate: lastDate, lastPayAmt: Number(lAmtStr) || 0, nextPayDate: nDate,
+                            nextPayAmt: nAmt, lastAttachDate: parseExcelDate(row['부착일']), lastPhotoDate: parseExcelDate(row['사진확인일']),
+                            listType: lType, adStatus: aStatus, refundAmt: Number(rAmtStr) || 0, isRefunded: row['환급여부'] || '미환급',
+                            memo: (row['메모'] || '').toString().substring(0,50), payHistory: [], autoFilled: autoFlag
+                        };
+                        drivers.push(newDriver); addCount++;
+                    });
+
+                    saveDriverUpdate(); closeExcelModal(); showMsg(`총 ${addCount}건의 데이터가 일괄 추가되었습니다.\n(빈 항목은 스마트 기본값으로 채워졌습니다)`);
+                } catch (error) { console.error(error); showMsg('파일을 읽는 중 오류가 발생했습니다. 시스템에서 추출한 엑셀 파일인지 확인해주세요.'); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- EXCEL EXPORT ---
+        function openExportModal() { document.getElementById('exportModal').classList.replace('hidden', 'flex'); }
+        function closeExportModal() { document.getElementById('exportModal').classList.replace('flex', 'hidden'); }
+        function executeExport(onlyFiltered) { closeExportModal(); exportToExcel(onlyFiltered); }
+
+        function exportToExcel(onlyFiltered = false) {
+            let tableHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            tableHtml += '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>OZ_DATA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1">';
+            const headers = ["광고주","이름","전화번호","주민번호","차량번호","차종","소속","계약시작","계약종료","계좌번호","최초입금일","최초입금액","기준입금일","최근입금일","최근입금액","차기입금일","차기입금액","부착일","사진확인일","등급","상태","환급금액","환급여부","메모"];
+            tableHtml += '<tr>' + headers.map(h => `<th style="background-color:#f1f5f9; font-weight:bold;">${h}</th>`).join('') + '</tr>';
+
+            const isNumericColumn = ['최초입금액', '최근입금액', '차기입금액', '환급금액'];
+            const isTextColumn = ['전화번호', '주민번호', '차량번호', '계좌번호'];
+            const targetData = onlyFiltered ? currentFilteredDrivers : drivers;
+
+            targetData.forEach(d => {
+                let rowHtml = '<tr>'; const auto = d.autoFilled || {};
+                headers.forEach(h => {
+                    let val = ''; let isAuto = false;
+                    if(h === '광고주') val = d.advertiser; else if(h === '이름') val = d.name; else if(h === '전화번호') val = d.phone;
+                    else if(h === '주민번호') val = d.idNum; else if(h === '차량번호') val = d.carNum; else if(h === '차종') val = d.carType;
+                    else if(h === '소속') val = d.affiliation; else if(h === '계약시작') val = d.contractStart; else if(h === '계약종료') val = d.contractEnd;
+                    else if(h === '계좌번호') val = d.account; else if(h === '최초입금일') val = d.firstPayDate; else if(h === '최초입금액') val = d.firstPayAmt;
+                    else if(h === '기준입금일') val = d.basePayDate; else if(h === '최근입금일') val = d.lastPayDate; else if(h === '최근입금액') val = d.lastPayAmt; 
+                    else if(h === '차기입금일') { val = d.nextPayDate; isAuto = auto.nextPayDate; } else if(h === '차기입금액') { val = d.nextPayAmt; isAuto = auto.nextPayAmt; } 
+                    else if(h === '부착일') val = d.lastAttachDate; else if(h === '사진확인일') val = d.lastPhotoDate;
+                    else if(h === '등급') { val = d.listType; isAuto = auto.listType; } else if(h === '상태') { val = d.adStatus; isAuto = auto.adStatus; } else if(h === '환급금액') val = d.refundAmt;
+                    else if(h === '환급여부') val = d.isRefunded; else if(h === '메모') val = d.memo;
+
+                    let style = isAuto ? 'background-color:#fef08a;' : ''; let msoFormat = '';
+                    if (isTextColumn.includes(h)) { msoFormat = 'mso-number-format:"\\@";'; } else if (isNumericColumn.includes(h) && val !== '') { msoFormat = 'mso-number-format:"0";'; }
+                    rowHtml += `<td style="${style} ${msoFormat}">${val || ''}</td>`;
+                });
+                rowHtml += '</tr>'; tableHtml += rowHtml;
+            });
+
+            tableHtml += '</table></body></html>';
+            
+            // 엑셀에서 한글이 깨지지 않도록 BOM(\uFEFF)을 데이터 맨 앞에 추가합니다.
+            const blob = new Blob(["\uFEFF" + tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(blob); 
+            const now = new Date(); const dateStr = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}`;
+            const fileSuffix = onlyFiltered ? "Search_Results" : "All";
+            link.download = `OZ_TAXI_${fileSuffix}_${dateStr}.xls`; link.click();
+        }
+
+        // --- Filters & Search ---
+        function toggleFilter() { document.getElementById('detailFilter').classList.toggle('hidden'); }
+        function resetFilters() { 
+            document.getElementById('searchInput').value = ''; document.getElementById('filterContractStart').value = ''; document.getElementById('filterContractEnd').value = '';
+            document.getElementById('filterLastStart').value = ''; document.getElementById('filterLastEnd').value = ''; document.getElementById('filterNextStart').value = ''; document.getElementById('filterNextEnd').value = '';
+            activeSorts = [];
+            renderDrivers(); 
+        }
+        function startVoiceSearch() {
+            if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return showMsg('현재 브라우저에서는 음성 검색을 지원하지 않습니다.');
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'ko-KR'; const btn = document.getElementById('voiceBtn'); btn.classList.add('text-blue-700', 'animate-pulse');
+            recognition.onresult = (e) => { 
+                document.getElementById('searchInput').value = e.results[0][0].transcript; 
+                saveRecentSearch();
+                renderDrivers(); 
+            };
+            recognition.onend = () => { btn.classList.remove('text-blue-700', 'animate-pulse'); };
+            recognition.start();
+        }
+
+        // --- Init ---
+        window.onload = () => { 
+            checkLogin(); 
+            renderDrivers(); 
+        };
+    </script>
+</body>
+</html>
